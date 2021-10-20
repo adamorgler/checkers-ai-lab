@@ -4,12 +4,30 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
 
+import java.util.ArrayList;
+
 public class UI {
+
+    static final int UP = 0;
+    static final int DOWN = 1;
+    static final int RIGHT = 2;
+    static final int LEFT = 3;
 
     ShapeRenderer shapes;
 
     int spotWidth;
     int pieceRadius;
+
+    int selX;
+    int selY;
+    int moveX;
+    int moveY;
+    boolean selected;
+
+    int maxX;
+    int maxY;
+
+    int rectWidth;
 
     private CheckersController cc;
 
@@ -20,18 +38,125 @@ public class UI {
         spotWidth = 40;
         pieceRadius = 16;
 
+        // selection cursor position
+        selX = 0;
+        selY = 0;
+
+        // movement selection cursor position
+        moveX = 0;
+        moveY = 0;
+
+        selected = false;
+
+        // selection cursor bounds
+        maxX = 4;
+        maxY = 8;
+
+        rectWidth = 3;
+
         this.cc = cc;
     }
 
     public void render() {
         ScreenUtils.clear(Color.DARK_GRAY);
-        shapes.begin(ShapeRenderer.ShapeType.Filled);
         showBoard();
         showPieces();
-        shapes.end();
+        showSelection();
+        showMoveOptions();
+    }
+
+    //moves cursor
+    public void moveSelection(int code) {
+        if (!selected) {
+            switch (code) {
+                case UP: {
+                    if (selY < maxY - 1) {
+                        selY++;
+                    }
+                    return;
+                }
+                case DOWN: {
+                    if (selY > 0) {
+                        selY--;
+                    }
+                    return;
+                }
+                case RIGHT: {
+                    if (selX < maxX - 1) {
+                        selX++;
+                    }
+                    return;
+                }
+                case LEFT: {
+                    if (selX > 0) {
+                        selX--;
+                    }
+                    return;
+                }
+            }
+        }
+    }
+
+
+    public void moveMoveSelection(int code) {
+        if (selected) {
+            ArrayList<int[]> moves = cc.getMoves(selX, selY);
+            for (int[] m : moves) {
+                int x = m[0];
+                int y = m[1];
+                switch (code) {
+                    case UP: {
+                        if (moveY < maxY - 1) {
+                            if (y == ++moveY) {
+                                moveY++;
+                            }
+                            return;
+                        }
+                    }
+                    case DOWN: {
+                        if (moveY > 0) {
+                            if (y == --moveY) {
+                                moveY--;
+                            }
+                        }
+                        return;
+                    }
+                    case RIGHT: {
+                        if (moveX < maxX - 1) {
+                            if (x == ++moveX) {
+                                moveX++;
+                            }
+                        }
+                        return;
+                    }
+                    case LEFT: {
+                        if (moveX > 0) {
+                            if (x == --moveX) {
+                                moveX--;
+                            }
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    public void select() {
+        if (!cc.isEmpty(selX, selY)) {
+            selected = true;
+            ArrayList<int[]> moves = cc.getMoves(selX, selY);
+            moveX = moves.get(0)[0];
+            moveY = moves.get(0)[1];
+        }
+    }
+
+    public void deselect() {
+        selected = false;
     }
 
     private void showBoard() {
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
         int spots = 8;
         for(int i = 0; i < spots; i++) {
             for (int j = 0; j < spots; j++) {
@@ -55,19 +180,19 @@ public class UI {
                 shapes.rect(xpos, ypos, spotWidth, spotWidth);
             }
         }
+        shapes.end();
     }
 
     private void showPieces() {
-        int xspots = 4;
-        int yspots = 8;
-        for(int i = 0; i < xspots; i++) {
-            for (int j = 0; j < yspots; j++) {
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        for(int i = 0; i < maxX; i++) {
+            for (int j = 0; j < maxY; j++) {
                 int xpos = i * spotWidth * 2 + (spotWidth / 2);
                 int ypos = j * spotWidth + (spotWidth / 2);
                 Color c = new Color();
-                BoardSpot[][] board = cc.getBoard();
-                if(!board[i][j].isEmpty()) {
-                   Piece p = board[i][j].getPiece();
+                Board b = cc.getGameState().getBoard();
+                if(!b.getSpot(i, j).isEmpty()) {
+                   Piece p = b.getSpot(i, j).getPiece();
                    if (p.getPlayer().equals(cc.getPlayer1())) {
                        c.set(Color.RED);
                    } else {
@@ -83,13 +208,63 @@ public class UI {
                 }
             }
         }
+        shapes.end();
     }
 
     private void showSelection() {
+        int xpos;
+        int ypos = selY * spotWidth;
+        if (selY % 2 == 1) {
+            xpos = selX * spotWidth * 2;
+        } else {
+            xpos = (selX * spotWidth * 2) + spotWidth;
+        }
+        //int lineWidth = 3;
+        Color c;
+        if (selected) {
+            c = new Color(Color.CORAL);
+        } else {
+            c = new Color(Color.BLUE);
+        }
 
+        drawThickRect(xpos, ypos, xpos + spotWidth, ypos + spotWidth, rectWidth, c);
     }
 
     private void showMoveOptions() {
+        ArrayList<int[]> moves = cc.getMoves(selX, selY);
+        drawMoves(moves);
+        ArrayList<int[]> jumps = cc.getJumps(selX, selY);
+        drawMoves(jumps);
 
+    }
+
+    private void drawMoves(ArrayList<int[]> moves) {
+        Color c;
+        for(int i = 0; i < moves.size(); i++) {
+            int[] m = moves.get(i);
+            int x = m[0];
+            int y = m[1];
+            if (selected && x == moveX && y == moveY) {
+                c = new Color(Color.MAROON);
+            } else {
+                c = new Color(Color.GOLD);
+            }
+            x *= spotWidth * 2;
+            if (y % 2 == 0) {
+                x += spotWidth;
+            }
+            y *= spotWidth;
+            drawThickRect(x,y, x + spotWidth, y + spotWidth, rectWidth, c);
+        }
+    }
+
+    private void drawThickRect(int x1, int y1, int x2, int y2, int w, Color c) {
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        shapes.setColor(c);
+        shapes.rectLine(x1, y1, x2, y1, w);
+        shapes.rectLine(x2, y1, x2, y2, w);
+        shapes.rectLine(x1, y2, x2, y2, w);
+        shapes.rectLine(x1, y1, x1, y2, w);
+        shapes.end();
     }
 }

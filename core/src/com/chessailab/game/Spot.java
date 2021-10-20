@@ -1,10 +1,10 @@
 package com.chessailab.game;
 
-public class BoardSpot {
+public class Spot {
 
     private Piece piece;
 
-    public BoardSpot() {
+    public Spot() {
         this.piece = null;
     }
 

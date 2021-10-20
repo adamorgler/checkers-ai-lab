@@ -9,7 +9,7 @@ public class CheckersController {
     final int SOUTHWEST = 2;
     final int SOUTHEAST = 3;
 
-    private BoardSpot[][] board;
+    private GameState gameState;
 
     private String player1;
 
@@ -19,10 +19,6 @@ public class CheckersController {
         this.player1 = player1;
         this.player2 = player2;
         newGame();
-    }
-
-    public BoardSpot[][] getBoard() {
-        return board;
     }
 
     public String getPlayer1() {
@@ -35,9 +31,10 @@ public class CheckersController {
 
     public ArrayList<int[]> getPieces(String player) {
         ArrayList<int[]> pieces = new ArrayList<>();
+        Board b = gameState.getBoard();
         for (int i = 0; i < 4; i++) {
             for(int j = 0; j < 8; j++) {
-                BoardSpot bs = board[i][j];
+                Spot bs = b.getSpot(i, j);
                 if (!bs.isEmpty()) {
                     Piece p = bs.getPiece();
                     if (p.getPlayer().equals(player)) {
@@ -49,38 +46,108 @@ public class CheckersController {
         return pieces;
     }
 
-    public int[][] getMoves(int x, int y) {
-        int[][] moves = new int[4][2];
-        if (posExists(x, y)) {
+    public ArrayList<int[]> getMoves(int x, int y) {
+        ArrayList<int[]> moves = new ArrayList<>();
+        if (posExists(x, y) && !isEmpty(x, y)) {
+            Piece p = getPiece(x, y);
             int sX = shiftX(x, y);
             int [] nw = {stillX(sX - 1, y + 1), y + 1};
             int [] ne = {stillX(sX + 1, y + 1), y + 1};
             int [] sw = {stillX(sX - 1, y - 1), y - 1};
             int [] se = {stillX(sX + 1, y - 1), y - 1};
-            if (isEmpty(nw) && posExists(nw)) {
-                moves[NORTHWEST] = nw;
+            if (posExists(nw)) {
+                if (isEmpty(nw)) {
+                    if (p.getPlayer().equals(player1) || p.isKinged()) {
+                        moves.add(nw);
+                    }
+                }
             }
-            if (isEmpty(ne) && posExists(ne)) {
-                moves[NORTHEAST] = ne;
+            if (posExists(ne)) {
+                if (isEmpty(ne)) {
+                    if (p.getPlayer().equals(player1) || p.isKinged()) {
+                        moves.add(ne);
+                    }
+                }
             }
-            if (isEmpty(sw) && posExists(sw)) {
-                moves[SOUTHWEST] = sw;
+            if (posExists(sw)) {
+                if (isEmpty(sw)) {
+                    if (p.getPlayer().equals(player2) || p.isKinged()) {
+                        moves.add(sw);
+                    }
+                }
             }
-            if (isEmpty(se) && posExists(se)) {
-                moves[SOUTHEAST] = se;
+            if (posExists(se)) {
+                if (isEmpty(se)) {
+                    if (p.getPlayer().equals(player2) || p.isKinged()) {
+                        moves.add(se);
+                    }
+                }
             }
         }
         return moves;
     }
 
-    public int[][] getJumps(int x, int y) {
-        return null;
+    public ArrayList<int[]> getJumps(int x, int y) {
+        ArrayList<int[]> jumps = new ArrayList<>();
+        if (posExists(x, y) && !isEmpty(x, y)) {
+            Piece p = getPiece(x, y);
+            int sX = shiftX(x, y);
+            int [] nw = {stillX(sX - 2, y + 2), y + 2};
+            int [] nwm = {stillX(sX - 1, y + 1), y + 1};
+            int [] ne = {stillX(sX + 2, y + 2), y + 2};
+            int [] nem = {stillX(sX + 1, y + 1), y + 1};
+            int [] sw = {stillX(sX - 2, y - 2), y - 2};
+            int [] swm = {stillX(sX - 1, y - 1), y - 1};
+            int [] se = {stillX(sX + 2, y - 2), y - 2};
+            int [] sem = {stillX(sX + 1, y - 1), y - 1};
+            if(checkJump(p, player1, nw, nwm)) {
+                jumps.add(nw);
+            }
+            if(checkJump(p, player1, ne, nem)) {
+                jumps.add(ne);
+            }
+            if(checkJump(p, player2, sw, swm)) {
+                jumps.add(sw);
+            }
+            if(checkJump(p, player2, se, sem)) {
+                jumps.add(se);
+            }
+
+        }
+
+        return jumps;
+    }
+
+    private boolean checkJump(Piece p, String player, int[] land, int[] jumped) {
+        if(posExists(land)) { // check if jump position exists
+            if(isEmpty(land) && !isEmpty(jumped)) { // check if there is a player to jump and the jump position is empty
+                if(p.getPlayer().equals(player) || p.isKinged()) { // check movement rules
+                    if (!getPiece(jumped).getPlayer().equals(p.getPlayer())) { // check if jumped piece is opposing team
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public Piece getPiece(int[] pos) {
+        int x = pos[0];
+        int y = pos[1];
+        return getPiece(x, y);
+    }
+
+    public Piece getPiece(int x, int y) {
+        Board b = gameState.getBoard();
+        Piece p = b.getSpot(x, y).getPiece();
+        return p;
     }
 
     public boolean move(int x, int y, int moveX, int moveY) {
+        Board b = gameState.getBoard();
         if (validMove(x, y, moveX, moveY)) {
-            board[moveX][moveY].setPiece(board[x][y].getPiece());
-            board[x][y].removePiece();
+            b.getSpot(moveX, moveY).setPiece(b.getSpot(x, y).getPiece());
+            b.getSpot(x, y).removePiece();
             return true;
         }
         return false;
@@ -94,11 +161,12 @@ public class CheckersController {
     }
 
     public boolean isEmpty(int x, int y) {
-        return board[x][y].isEmpty();
+        Board b = gameState.getBoard();
+        return b.getSpot(x, y).isEmpty();
     }
 
     public boolean isEmpty(int[] pos) {
-        return board[pos[0]][pos[1]].isEmpty();
+        return isEmpty(pos[0], pos[1]);
     }
 
     public boolean posExists(int x, int y) {
@@ -122,6 +190,20 @@ public class CheckersController {
         return false;
     }
 
+    public void king(int[] pos) {
+        int x = pos[0];
+        int y = pos[1];
+        king(x, y);
+    }
+
+    public void king(int x, int y) {
+        if(posExists(x, y)) {
+            if (!isEmpty(x, y)) {
+                getPiece(x, y).king();
+            }
+        }
+    }
+
     // shifts xpos to a more manageble coordinate.
     // removes "zigzagging" in matrix allowing for simple cardinal move translation
     private int shiftX(int x, int y) {
@@ -139,19 +221,14 @@ public class CheckersController {
         return x / 2;
     }
     private void newGame() {
-        int xwidth = 4;
-        int ywidth = 8;
-        this.board = new BoardSpot[xwidth][ywidth];
-        for(int i = 0; i < xwidth; i++){
-            for(int j = 0; j < ywidth; j++) {
-                BoardSpot bs = new BoardSpot();
-                if (j < 3) {
-                    bs.setPiece(new Piece(player1));
-                } else if (j >= 5) {
-                    bs.setPiece(new Piece(player2));
-                }
-                this.board[i][j] = bs;
-            }
-        }
+        this.gameState = new GameState(this);
+    }
+
+    public GameState getGameState() {
+        return gameState;
+    }
+
+    public void setGameState(GameState gameState) {
+        this.gameState = gameState;
     }
 }
