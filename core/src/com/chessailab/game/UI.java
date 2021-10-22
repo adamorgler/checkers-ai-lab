@@ -219,7 +219,7 @@ public class UI {
                    shapes.setColor(c);
                    shapes.circle(xpos, ypos, pieceRadius);
                    if (p.isKinged()) {
-                       shapes.setColor(Color.WHITE);
+                       shapes.setColor(Color.GOLD);
                        shapes.circle(xpos, ypos, pieceRadius / 2);
                    }
                 }

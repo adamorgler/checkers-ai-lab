@@ -43,22 +43,20 @@ public class CheckersController {
         GameState gs = new GameState(b, gameState.getTurn());
         if (validMove(x, y, moveX, moveY)) {
             String p = b.getSpot(x, y).getPiece().getPlayer();
-            if (checkMyTurn(p)) {
-                if (checkJump(x, y, moveX, moveY)) {
-                    int[] jumped = jumpedPos(x, y, moveX, moveY);
-                    gs.getBoard().getSpot(jumped).removePiece();
-                    b.getSpot(moveX, moveY).setPiece(b.getSpot(x, y).getPiece());
-                    b.getSpot(x, y).removePiece();
-                    if (!hasJumps(moveX, moveY)) {
-                        gs.nextTurn();
-                    }
-                } else {
-                    b.getSpot(moveX, moveY).setPiece(b.getSpot(x, y).getPiece());
-                    b.getSpot(x, y).removePiece();
+            if (checkJump(x, y, moveX, moveY)) {
+                int[] jumped = jumpedPos(x, y, moveX, moveY);
+                gs.getBoard().getSpot(jumped).removePiece();
+                b.getSpot(moveX, moveY).setPiece(b.getSpot(x, y).getPiece());
+                b.getSpot(x, y).removePiece();
+                if (!hasJumps(moveX, moveY)) {
                     gs.nextTurn();
                 }
-                return gs;
+            } else {
+                b.getSpot(moveX, moveY).setPiece(b.getSpot(x, y).getPiece());
+                b.getSpot(x, y).removePiece();
+                gs.nextTurn();
             }
+            return gs;
         }
         return null;
     }
@@ -204,12 +202,11 @@ public class CheckersController {
     }
 
     public ArrayList<int[]> getPlayerMoves (String player) {
-        GameState gs = getGameState();
         ArrayList<int[]> playerMoves = new ArrayList<>();
         for(int i = 0; i < 4; i++) {
             for (int j = 0; j < 8; j++) {
                 if (!isEmpty(i, j)) {
-                    Spot s = gs.getBoard().getSpot(i, j);
+                    Spot s = gameState.getBoard().getSpot(i, j);
                     Piece p = s.getPiece();
                     String pl = p.getPlayer();
                     if (pl.equals(player)) {
