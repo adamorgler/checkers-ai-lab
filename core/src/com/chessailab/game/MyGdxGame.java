@@ -16,10 +16,10 @@ public class MyGdxGame extends ApplicationAdapter {
 	
 	@Override
 	public void create () {
-		cc = new CheckersController("red", "black");
-		cc.move(0, 2, 0, 3);
-		cc.move(1, 5, 0, 4);
-		cc.move(1, 2, 1, 3);
+		String p1 = "red";
+		String p2 = "black";
+
+		cc = new CheckersController(p1, p2);
 		ui = new UI(cc);
 		al = new ActionListener(cc, ui);
 	}

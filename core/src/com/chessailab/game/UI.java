@@ -1,6 +1,8 @@
 package com.chessailab.game;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
 
@@ -14,12 +16,15 @@ public class UI {
     static final int LEFT = 3;
 
     ShapeRenderer shapes;
+    SpriteBatch batch;
+    BitmapFont font;
 
     int spotWidth;
     int pieceRadius;
 
     int selX;
     int selY;
+    int moveC; // move cursor
     int moveX;
     int moveY;
     boolean selected;
@@ -35,6 +40,9 @@ public class UI {
         this.shapes = new ShapeRenderer();
         this.shapes.setAutoShapeType(true);
 
+        this.batch = new SpriteBatch();
+        this.font = new BitmapFont();
+
         spotWidth = 40;
         pieceRadius = 16;
 
@@ -45,6 +53,7 @@ public class UI {
         // movement selection cursor position
         moveX = 0;
         moveY = 0;
+        moveC = 0;
 
         selected = false;
 
@@ -63,6 +72,8 @@ public class UI {
         showPieces();
         showSelection();
         showMoveOptions();
+        drawLog();
+        checkJumpState();
     }
 
     //moves cursor
@@ -100,59 +111,61 @@ public class UI {
 
     public void moveMoveSelection(int code) {
         if (selected) {
-            ArrayList<int[]> moves = cc.getMoves(selX, selY);
-            for (int[] m : moves) {
-                int x = m[0];
-                int y = m[1];
-                switch (code) {
-                    case UP: {
-                        if (moveY < maxY - 1) {
-                            if (y == ++moveY) {
-                                moveY++;
-                            }
-                            return;
-                        }
+            ArrayList<int[]> moves = getMoves();
+            int max = moves.size();
+            switch(code) {
+                case RIGHT: {
+                    if(moveC == max - 1) {
+                        moveC = 0;
+                    } else {
+                        moveC++;
                     }
-                    case DOWN: {
-                        if (moveY > 0) {
-                            if (y == --moveY) {
-                                moveY--;
-                            }
-                        }
-                        return;
+                    break;
+                }
+                case LEFT: {
+                    if (moveC == 0) {
+                        moveC = max - 1;
+                    } else {
+                        moveC--;
                     }
-                    case RIGHT: {
-                        if (moveX < maxX - 1) {
-                            if (x == ++moveX) {
-                                moveX++;
-                            }
-                        }
-                        return;
-                    }
-                    case LEFT: {
-                        if (moveX > 0) {
-                            if (x == --moveX) {
-                                moveX--;
-                            }
-                        }
-                        return;
-                    }
+                    break;
                 }
             }
+            moveX = moves.get(moveC)[0];
+            moveY = moves.get(moveC)[1];
+            return;
         }
     }
 
     public void select() {
         if (!cc.isEmpty(selX, selY)) {
             selected = true;
-            ArrayList<int[]> moves = cc.getMoves(selX, selY);
+            ArrayList<int[]> moves = getMoves();
             moveX = moves.get(0)[0];
             moveY = moves.get(0)[1];
+            moveC = 0;
         }
     }
 
     public void deselect() {
         selected = false;
+    }
+
+    public void enterMove() {
+        if(selected) {
+            cc.move(selX, selY, moveX, moveY);
+            deselect();
+        }
+    }
+
+    private ArrayList<int[]> getMoves() {
+        ArrayList<int[]> moves;
+        if (cc.isJumped()) {
+            moves = cc.getJumps(selX, selY);
+        } else {
+            moves = cc.getAllMoves(selX, selY);
+        }
+        return moves;
     }
 
     private void showBoard() {
@@ -205,6 +218,10 @@ public class UI {
 
                    shapes.setColor(c);
                    shapes.circle(xpos, ypos, pieceRadius);
+                   if (p.isKinged()) {
+                       shapes.setColor(Color.WHITE);
+                       shapes.circle(xpos, ypos, pieceRadius / 2);
+                   }
                 }
             }
         }
@@ -231,10 +248,8 @@ public class UI {
     }
 
     private void showMoveOptions() {
-        ArrayList<int[]> moves = cc.getMoves(selX, selY);
+        ArrayList<int[]> moves = getMoves();
         drawMoves(moves);
-        ArrayList<int[]> jumps = cc.getJumps(selX, selY);
-        drawMoves(jumps);
 
     }
 
@@ -258,6 +273,17 @@ public class UI {
         }
     }
 
+    private void drawLog() {
+        Color c = new Color(Color.WHITE);
+        int x = 10;
+        int y = (spotWidth * 8) + spotWidth;
+        String log = cc.getLog();
+
+        batch.begin();
+        font.draw(batch, log, x, y);
+        batch.end();
+    }
+
     private void drawThickRect(int x1, int y1, int x2, int y2, int w, Color c) {
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         shapes.setColor(c);
@@ -266,5 +292,15 @@ public class UI {
         shapes.rectLine(x1, y2, x2, y2, w);
         shapes.rectLine(x1, y1, x1, y2, w);
         shapes.end();
+    }
+
+    private void checkJumpState() {
+        if(cc.isJumped()) {
+            if (!selected) {
+                selX = moveX;
+                selY = moveY;
+            }
+            select();
+        }
     }
 }

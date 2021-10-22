@@ -16,10 +16,8 @@ public class Spot {
         this.piece = piece;
     }
 
-    public Piece removePiece() {
-        Piece temp = this.piece.copy();
+    public void removePiece() {
         this.piece = null;
-        return temp;
     }
 
     public boolean isEmpty() {

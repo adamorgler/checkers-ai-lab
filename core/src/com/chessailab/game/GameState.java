@@ -1,17 +1,25 @@
 package com.chessailab.game;
 
-public class GameState {
+import com.sun.tools.javac.comp.Check;
 
-    private CheckersController cc;
+public class GameState {
 
     private Board board;
 
     private int turn;
 
+    private boolean running;
+
     public GameState(CheckersController cc) {
-        this.cc = cc;
-        this.board = new Board(cc);
+        this.board = new Board(cc.getPlayer1(), cc.getPlayer2());
         this.turn = 0;
+        this.running = true;
+    }
+
+    public GameState(Board b, int turn) {
+        this.board = b;
+        this.turn = turn;
+        this.running = true;
     }
 
     public Board getBoard() {
@@ -37,5 +45,14 @@ public class GameState {
     public void newGame() {
         turn = 0;
         board.newGame();
+        running = true;
+    }
+
+    public void endGame() {
+        running = false;
+    }
+
+    public boolean isRunning() {
+        return running;
     }
 }
