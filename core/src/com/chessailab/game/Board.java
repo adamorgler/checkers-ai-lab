@@ -43,6 +43,18 @@ public class Board {
         }
     }
 
+    public void emptyBoard() {
+        int xwidth = 4;
+        int ywidth = 8;
+        this.board = new Spot[xwidth][ywidth];
+        for(int i = 0; i < xwidth; i++){
+            for(int j = 0; j < ywidth; j++) {
+                Spot bs = new Spot();
+                this.board[i][j] = bs;
+            }
+        }
+    }
+
     public Spot[][] getBoard() {
         int xwidth = 4;
         int ywidth = 8;

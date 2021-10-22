@@ -1,7 +1,5 @@
 package com.chessailab.game;
 
-import com.badlogic.gdx.Game;
-
 import java.util.ArrayList;
 
 public class CheckersController {
@@ -21,14 +19,20 @@ public class CheckersController {
 
     private String log;
 
-    private AIController ai;
+    private AIController ai1;
+
+    private AIController ai2;
 
     public CheckersController(String player1, String player2) {
         this.player1 = player1;
         this.player2 = player2;
         this.jumped = false;
         newGame();
-        this.ai = new AIController(player2, this);
+        this.ai1 = new AIController(player2, this);
+        this.ai1.setDepth(7);
+        // for AI vs AI game
+        this.ai2 = new AIController(player1, this);
+        this.ai2.setDepth(5);
     }
 
     public CheckersController(String player1, String player2, GameState gameState) {
@@ -41,14 +45,13 @@ public class CheckersController {
     public GameState checkMove(int x, int y, int moveX, int moveY) {
         Board b = new Board(player1, player2, gameState.getBoard().getBoard());
         GameState gs = new GameState(b, gameState.getTurn());
-        if (validMove(x, y, moveX, moveY)) {
-            String p = b.getSpot(x, y).getPiece().getPlayer();
-            if (checkJump(x, y, moveX, moveY)) {
+        if (validMove(x, y, moveX, moveY, gs)) {
+            if (checkJumpPos(x, y, moveX, moveY)) {
                 int[] jumped = jumpedPos(x, y, moveX, moveY);
                 gs.getBoard().getSpot(jumped).removePiece();
                 b.getSpot(moveX, moveY).setPiece(b.getSpot(x, y).getPiece());
                 b.getSpot(x, y).removePiece();
-                if (!hasJumps(moveX, moveY)) {
+                if (!hasJumps(moveX, moveY, gs)) {
                     gs.nextTurn();
                 }
             } else {
@@ -66,7 +69,7 @@ public class CheckersController {
         if (validMove(x, y, moveX, moveY)) {
             String p = b.getSpot(x, y).getPiece().getPlayer();
             if (checkMyTurn(p)) {
-                if (checkJump(x, y, moveX, moveY)) {
+                if (checkJumpPos(x, y, moveX, moveY)) {
                     int[] jumped = jumpedPos(x, y, moveX, moveY);
                     gameState.getBoard().getSpot(jumped).removePiece();
                     b.getSpot(moveX, moveY).setPiece(b.getSpot(x, y).getPiece());
@@ -194,6 +197,36 @@ public class CheckersController {
         return jumps;
     }
 
+    public ArrayList<int[]> getJumps(int x, int y, GameState gs) {
+        ArrayList<int[]> jumps = new ArrayList<>();
+        if (posExists(x, y) && !isEmpty(x, y, gs)) {
+            Piece p = getPiece(x, y, gs);
+            int sX = shiftX(x, y);
+            int [] nw = {stillX(sX - 2, y + 2), y + 2};
+            int [] nwm = {stillX(sX - 1, y + 1), y + 1};
+            int [] ne = {stillX(sX + 2, y + 2), y + 2};
+            int [] nem = {stillX(sX + 1, y + 1), y + 1};
+            int [] sw = {stillX(sX - 2, y - 2), y - 2};
+            int [] swm = {stillX(sX - 1, y - 1), y - 1};
+            int [] se = {stillX(sX + 2, y - 2), y - 2};
+            int [] sem = {stillX(sX + 1, y - 1), y - 1};
+            if(checkJump(p, player1, nw, nwm, gs)) {
+                jumps.add(nw);
+            }
+            if(checkJump(p, player1, ne, nem, gs)) {
+                jumps.add(ne);
+            }
+            if(checkJump(p, player2, sw, swm, gs)) {
+                jumps.add(sw);
+            }
+            if(checkJump(p, player2, se, sem, gs)) {
+                jumps.add(se);
+            }
+
+        }
+        return jumps;
+    }
+
     public ArrayList<int[]> getAllMoves(int x, int y) {
         ArrayList<int[]> moves = getMoves(x, y);
         ArrayList<int[]> jumps = getJumps(x, y);
@@ -256,9 +289,34 @@ public class CheckersController {
         return false;
     }
 
+    public boolean hasJumps(int x, int y, GameState gs) {
+        if (posExists(x, y)) {
+            if (!isEmpty(x, y, gs)) {
+                ArrayList<int[]> jumps = getJumps(x, y, gs);
+                if (jumps.size() != 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private boolean checkJump(Piece p, String player, int[] land, int[] jumped) {
         if(posExists(land)) { // check if jump position exists
             if(isEmpty(land) && !isEmpty(jumped)) { // check if there is a player to jump and the jump position is empty
+                if(p.getPlayer().equals(player) || p.isKinged()) { // check movement rules
+                    if (!getPiece(jumped).getPlayer().equals(p.getPlayer())) { // check if jumped piece is opposing team
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean checkJump(Piece p, String player, int[] land, int[] jumped, GameState gs) {
+        if(posExists(land)) { // check if jump position exists
+            if(isEmpty(land, gs) && !isEmpty(jumped, gs)) { // check if there is a player to jump and the jump position is empty
                 if(p.getPlayer().equals(player) || p.isKinged()) { // check movement rules
                     if (!getPiece(jumped).getPlayer().equals(p.getPlayer())) { // check if jumped piece is opposing team
                         return true;
@@ -275,8 +333,20 @@ public class CheckersController {
         return getPiece(x, y);
     }
 
+    public Piece getPiece(int[] pos, GameState gs) {
+        int x = pos[0];
+        int y = pos[1];
+        return getPiece(x, y, gs);
+    }
+
     public Piece getPiece(int x, int y) {
         Board b = gameState.getBoard();
+        Piece p = b.getSpot(x, y).getPiece();
+        return p;
+    }
+
+    public Piece getPiece(int x, int y, GameState gs) {
+        Board b = gs.getBoard();
         Piece p = b.getSpot(x, y).getPiece();
         return p;
     }
@@ -298,6 +368,15 @@ public class CheckersController {
         return isEmpty(pos[0], pos[1]);
     }
 
+    public boolean isEmpty(int[] pos, GameState gs) {
+        return isEmpty(pos[0], pos[1], gs);
+    }
+
+    public boolean isEmpty(int x, int y, GameState gs) {
+        Board b = gs.getBoard();
+        return b.getSpot(x, y).isEmpty();
+    }
+
     public boolean posExists(int x, int y) {
         if (x >= 0 && x < 4 && y >= 0 && y < 8) {
             return true;
@@ -314,6 +393,13 @@ public class CheckersController {
 
     public boolean validMove(int x, int y, int moveX, int moveY) {
         if (posExists(x, y) && posExists(moveX, moveY) && isEmpty(moveX, moveY)) {
+            return true;
+        }
+        return false;
+    }
+
+    public boolean validMove(int x, int y, int moveX, int moveY, GameState gs) {
+        if (posExists(x, y) && posExists(moveX, moveY) && isEmpty(moveX, moveY, gs)) {
             return true;
         }
         return false;
@@ -397,7 +483,7 @@ public class CheckersController {
         return x / 2;
     }
 
-    private boolean checkJump(int x, int y, int moveX, int moveY) {
+    private boolean checkJumpPos(int x, int y, int moveX, int moveY) {
         if (Math.abs(y - moveY) == 2) {
             return true;
         }
@@ -465,7 +551,7 @@ public class CheckersController {
     }
 
     private void checkAITurn() {
-        Thread t = new Thread(ai);
+        Thread t = new Thread(ai1);
         t.start();
     }
 

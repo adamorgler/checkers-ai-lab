@@ -11,6 +11,8 @@ public class AIController implements Runnable{
 
     private String player;
 
+    private int depth;
+
     public AIController(String player, CheckersController cc) {
         this.cc = cc;
         this.player = player;
@@ -18,14 +20,68 @@ public class AIController implements Runnable{
 
     @Override
     public void run() {
-        minimaxStart(5);
+        alphaBetaStart(depth);
     }
 
+    public void setDepth(int depth) {
+        this.depth = depth;
+    }
 
-
-    private void alphaBeta() {
+    private void alphaBetaStart(int depth) {
+        int alpha = Integer.MIN_VALUE;
+        int beta = Integer.MAX_VALUE;
         GameState gs = cc.getGameState();
+        ArrayList<int[]> moves = cc.getPlayerMoves(player);
+        ArrayList<GameState> states = nextStates(moves, gs);
+        GameState dec = checkMove(moves.get(0), cc);
+        int v = Integer.MIN_VALUE;
+        for(GameState s : states) {
+            int w = alphaBeta(depth, s, false, Integer.MIN_VALUE, Integer.MAX_VALUE);
+            if (w >= v) {
+                dec = s;
+                v = w;
+            }
+            if(v >= beta) {
+                break;
+            }
+            alpha = Math.max(v, alpha);
+        }
+        cc.setAIMove(dec);
+    }
 
+    private int alphaBeta(int depth, GameState gs, boolean max, int alpha, int beta) {
+        if (depth == 0) {
+            return evBoardValue(gs);
+        }
+        depth--;
+        int v;
+        CheckersController newCC = newCC(gs);
+        ArrayList<int[]> moves;
+        ArrayList<GameState> states;
+        if (max) {
+            v = Integer.MIN_VALUE;
+            moves = newCC.getPlayerMoves(cc.getPlayer2());
+            states = nextStates(moves, gs);
+            for (GameState s : states) {
+                v = Math.max(v, alphaBeta(depth, s, false, alpha, beta));
+                if(v >= beta) {
+                    return v;
+                }
+                alpha = Math.max(v, alpha);
+            }
+        } else {
+            v = Integer.MAX_VALUE;
+            moves = newCC.getPlayerMoves(cc.getPlayer1());
+            states = nextStates(moves, gs);
+            for (GameState s : states) {
+                v = Math.min(v, alphaBeta(depth, s, true, alpha, beta));
+                if(v <= alpha) {
+                    return v;
+                }
+                beta = Math.min(v, beta);
+            }
+        }
+        return v;
     }
 
     private void minimaxStart(int depth) {
@@ -35,7 +91,7 @@ public class AIController implements Runnable{
         GameState dec = checkMove(moves.get(0), cc);
         int v = Integer.MIN_VALUE;
         for(GameState s : states) {
-            int w = minimax(depth, s, true);
+            int w = minimax(depth, s, false);
             if (w > v) {
                 dec = s;
             }
@@ -119,9 +175,61 @@ public class AIController implements Runnable{
     }
 
     private int evNumCapturedOpp(GameState gs) {
-        CheckersController newCC = new CheckersController(cc.getPlayer1(), cc.getPlayer2(), gs);
-        ArrayList<int[]> oppPieces = newCC.getPieces(cc.getPlayer1());
-        return 12 - oppPieces.size();
+        CheckersController newCC = newCC(gs);
+        ArrayList<int[]> pieces;
+        if (newCC.checkMyTurn(player)) {
+            pieces = newCC.getPieces(cc.getPlayer1());
+            return 12 - pieces.size();
+        } else {
+            pieces = newCC.getPieces(player);
+            return pieces.size();
+        }
+    }
+
+    private int evBoardValue(GameState gs) {
+        int value = 0;
+        Spot[][] b = gs.getBoard().getBoard();
+        for(int i = 0; i < 4; i++) {
+            for (int j = 0; j < 8; j++) {
+                Piece piece = b[i][j].getPiece();
+                if (piece != null) {
+                    String pl = piece.getPlayer();
+                    value += pieceValue(j, pl);
+                    if (piece.isKinged()) {
+                        value += kingValue(j, pl);
+                    }
+
+                }
+            }
+        }
+        return value;
+    }
+    private int pieceValue(int y, String player) {
+        int v = 0;
+        int pieceV = 5;
+        int halfV = 2;
+        if (player.equals(this.player)) {
+            v+= pieceV;
+            if(y <= 3) {
+                v += halfV;
+            }
+        } else {
+            v-= pieceV;
+            if(y > 3) {
+                v -= halfV;
+            }
+        }
+        return v;
+    }
+    private int kingValue(int y, String player) {
+        int v = 0;
+        int kingV = 10;
+        if(player.equals(this.player)) {
+            v += kingV;
+        } else {
+            v -= kingV;
+        }
+        return v;
     }
 
     private GameState checkMove(int[] m, CheckersController cc) {
