@@ -131,8 +131,12 @@ public class UI {
                     break;
                 }
             }
-            moveX = moves.get(moveC)[0];
-            moveY = moves.get(moveC)[1];
+            if (!moves.isEmpty()) {
+                moveX = moves.get(moveC)[0];
+                moveY = moves.get(moveC)[1];
+            } else {
+                selected = false;
+            }
             return;
         }
     }
@@ -141,9 +145,11 @@ public class UI {
         if (!cc.isEmpty(selX, selY)) {
             selected = true;
             ArrayList<int[]> moves = getMoves();
-            moveX = moves.get(0)[0];
-            moveY = moves.get(0)[1];
-            moveC = 0;
+            if (!moves.isEmpty()) {
+                moveX = moves.get(0)[0];
+                moveY = moves.get(0)[1];
+                moveC = 0;
+            }
         }
     }
 

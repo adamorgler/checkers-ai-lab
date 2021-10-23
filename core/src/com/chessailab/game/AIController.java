@@ -1,8 +1,10 @@
 package com.chessailab.game;
 
+import com.badlogic.gdx.Game;
 import com.badlogic.gdx.utils.Queue;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Random;
 
 public class AIController implements Runnable{
@@ -13,9 +15,14 @@ public class AIController implements Runnable{
 
     private int depth;
 
+    private boolean aiOnly;
+
+    private int evFunction;
+
     public AIController(String player, CheckersController cc) {
         this.cc = cc;
         this.player = player;
+        this.aiOnly = false;
     }
 
     @Override
@@ -27,16 +34,25 @@ public class AIController implements Runnable{
         this.depth = depth;
     }
 
+    public void setAiOnly() {
+        this.aiOnly = true;
+    }
+
+    public void setEvFunction(int f) {
+        evFunction = f;
+    }
+
     private void alphaBetaStart(int depth) {
         int alpha = Integer.MIN_VALUE;
         int beta = Integer.MAX_VALUE;
         GameState gs = cc.getGameState();
         ArrayList<int[]> moves = cc.getPlayerMoves(player);
+        Collections.shuffle(moves);
         ArrayList<GameState> states = nextStates(moves, gs);
         GameState dec = checkMove(moves.get(0), cc);
         int v = Integer.MIN_VALUE;
         for(GameState s : states) {
-            int w = alphaBeta(depth, s, false, Integer.MIN_VALUE, Integer.MAX_VALUE);
+            int w = alphaBeta(depth, s, true, alpha, beta);
             if (w >= v) {
                 dec = s;
                 v = w;
@@ -51,7 +67,7 @@ public class AIController implements Runnable{
 
     private int alphaBeta(int depth, GameState gs, boolean max, int alpha, int beta) {
         if (depth == 0) {
-            return evBoardValue(gs);
+            return evFunction(gs);
         }
         depth--;
         int v;
@@ -60,7 +76,7 @@ public class AIController implements Runnable{
         ArrayList<GameState> states;
         if (max) {
             v = Integer.MIN_VALUE;
-            moves = newCC.getPlayerMoves(cc.getPlayer2());
+            moves = newCC.getPlayerMoves(player);
             states = nextStates(moves, gs);
             for (GameState s : states) {
                 v = Math.max(v, alphaBeta(depth, s, false, alpha, beta));
@@ -71,7 +87,11 @@ public class AIController implements Runnable{
             }
         } else {
             v = Integer.MAX_VALUE;
-            moves = newCC.getPlayerMoves(cc.getPlayer1());
+            if (player.equals(cc.getPlayer1())) {
+                moves = newCC.getPlayerMoves(cc.getPlayer2());
+            } else {
+                moves = newCC.getPlayerMoves(cc.getPlayer1());
+            }
             states = nextStates(moves, gs);
             for (GameState s : states) {
                 v = Math.min(v, alphaBeta(depth, s, true, alpha, beta));
@@ -91,7 +111,7 @@ public class AIController implements Runnable{
         GameState dec = checkMove(moves.get(0), cc);
         int v = Integer.MIN_VALUE;
         for(GameState s : states) {
-            int w = minimax(depth, s, false);
+            int w = minimax(depth, s, true);
             if (w > v) {
                 dec = s;
             }
@@ -174,6 +194,20 @@ public class AIController implements Runnable{
         return fixed;
     }
 
+    private int evFunction(GameState gs) {
+        switch(evFunction) {
+            case 0: {
+                return evBoardValue(gs);
+            }
+            case 1: {
+                return evNumCapturedOpp(gs);
+            }
+            default: {
+                return 0;
+            }
+        }
+    }
+
     private int evNumCapturedOpp(GameState gs) {
         CheckersController newCC = newCC(gs);
         ArrayList<int[]> pieces;
@@ -209,13 +243,20 @@ public class AIController implements Runnable{
         int pieceV = 5;
         int halfV = 2;
         if (player.equals(this.player)) {
-            v+= pieceV;
-            if(y <= 3) {
+            v += pieceV;
+        } else {
+            v -= pieceV;
+        }
+        if (this.player.equals(cc.getPlayer1())) {
+            if(player.equals(cc.getPlayer1()) && y > 3) {
                 v += halfV;
+            } else if(player.equals(cc.getPlayer2()) && y <= 3) {
+                v -= halfV;
             }
         } else {
-            v-= pieceV;
-            if(y > 3) {
+            if (player.equals(cc.getPlayer2()) && y <= 3) {
+                v += halfV;
+            } else if(player.equals(cc.getPlayer1()) && y > 3) {
                 v -= halfV;
             }
         }
@@ -224,6 +265,7 @@ public class AIController implements Runnable{
     private int kingValue(int y, String player) {
         int v = 0;
         int kingV = 10;
+        int halfV = 2;
         if(player.equals(this.player)) {
             v += kingV;
         } else {

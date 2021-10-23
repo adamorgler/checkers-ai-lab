@@ -23,16 +23,18 @@ public class CheckersController {
 
     private AIController ai2;
 
+    private boolean aiRunning;
+
     public CheckersController(String player1, String player2) {
         this.player1 = player1;
         this.player2 = player2;
         this.jumped = false;
         newGame();
-        this.ai1 = new AIController(player2, this);
-        this.ai1.setDepth(7);
+        this.ai2 = new AIController(player2, this);
+        this.ai2.setDepth(7);
         // for AI vs AI game
-        this.ai2 = new AIController(player1, this);
-        this.ai2.setDepth(5);
+        this.ai1 = new AIController(player1, this);
+        this.ai1.setDepth(3);
     }
 
     public CheckersController(String player1, String player2, GameState gameState) {
@@ -98,6 +100,36 @@ public class CheckersController {
             }
         }
         return false;
+    }
+
+    public void setAIMove(GameState gameState) {
+        if (!isRunning()) {
+            return;
+        }
+        this.gameState = gameState;
+        checkDraw();
+        checkEndgame();
+        if (isRunning()) {
+            logTurn();
+            checkKings();
+        }
+        aiRunning = false;
+    }
+
+    public boolean aiRunning() {
+        return aiRunning;
+    }
+
+    public void setAIRunning(boolean b) {
+        aiRunning = b;
+    }
+
+    public AIController getAi1() {
+        return ai1;
+    }
+
+    public AIController getAi2() {
+        return ai2;
     }
 
     public String getPlayer1() {
@@ -230,12 +262,49 @@ public class CheckersController {
     public ArrayList<int[]> getAllMoves(int x, int y) {
         ArrayList<int[]> moves = getMoves(x, y);
         ArrayList<int[]> jumps = getJumps(x, y);
-        moves.addAll(jumps);
-        return moves;
+        if (!hasToJump(player1)) {
+            return moves;
+        }
+        return jumps;
     }
 
     public ArrayList<int[]> getPlayerMoves (String player) {
-        ArrayList<int[]> playerMoves = new ArrayList<>();
+        if (hasToJump(player)) {
+            return getAllPlayerJumps(player);
+        } else {
+            ArrayList<int[]> playerMoves = new ArrayList<>();
+            for(int i = 0; i < 4; i++) {
+                for (int j = 0; j < 8; j++) {
+                    if (!isEmpty(i, j)) {
+                        Spot s = gameState.getBoard().getSpot(i, j);
+                        Piece p = s.getPiece();
+                        String pl = p.getPlayer();
+                        if (pl.equals(player)) {
+                            if (hasMoves(i, j)) {
+                                ArrayList<int[]> moves = getMoves(i, j);
+                                for (int [] m : moves) {
+                                    int[] next = {i, j, m[0], m[1]};
+                                    playerMoves.add(next);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return playerMoves;
+        }
+    }
+
+    public boolean hasToJump(String player) {
+        ArrayList<int[]> jumps = getAllPlayerJumps(player);
+        if(jumps.isEmpty()) {
+            return false;
+        }
+        return true;
+    }
+
+    public ArrayList<int[]> getAllPlayerJumps(String player) {
+        ArrayList<int[]> playerJumps = new ArrayList<>();
         for(int i = 0; i < 4; i++) {
             for (int j = 0; j < 8; j++) {
                 if (!isEmpty(i, j)) {
@@ -243,18 +312,18 @@ public class CheckersController {
                     Piece p = s.getPiece();
                     String pl = p.getPlayer();
                     if (pl.equals(player)) {
-                        if (hasMoves(i, j) || hasJumps(i, j)) {
-                            ArrayList<int[]> moves = getAllMoves(i, j);
-                            for (int [] m : moves) {
-                                int[] next = {i, j, m[0], m[1]};
-                                playerMoves.add(next);
+                        if (hasJumps(i, j)) {
+                            ArrayList<int[]> jumps = getJumps(i, j);
+                            for (int [] ju : jumps) {
+                                int[] next = {i, j, ju[0], ju[1]};
+                                playerJumps.add(next);
                             }
                         }
                     }
                 }
             }
         }
-        return playerMoves;
+        return playerJumps;
     }
 
     public boolean checkPlayerHasMoves(String player) {
@@ -268,7 +337,7 @@ public class CheckersController {
     public boolean hasMoves(int x, int y) {
         if (posExists(x, y)) {
             if (!isEmpty(x,  y)) {
-                ArrayList<int[]> moves = getAllMoves(x, y);
+                ArrayList<int[]> moves = getMoves(x, y);
                 if (moves.size() != 0) {
                     return true;
                 }
@@ -419,16 +488,6 @@ public class CheckersController {
         }
     }
 
-    public void setAIMove(GameState gameState) {
-        this.gameState = gameState;
-        checkDraw();
-        checkEndgame();
-        if (isRunning()) {
-            logTurn();
-            checkKings();
-        }
-    }
-
     public GameState getGameState() {
         return gameState;
     }
@@ -447,6 +506,10 @@ public class CheckersController {
 
     public boolean isRunning() {
         return gameState.isRunning();
+    }
+
+    public void stop() {
+        gameState.stop();
     }
 
     public boolean isJumped() {
@@ -551,7 +614,7 @@ public class CheckersController {
     }
 
     private void checkAITurn() {
-        Thread t = new Thread(ai1);
+        Thread t = new Thread(ai2);
         t.start();
     }
 

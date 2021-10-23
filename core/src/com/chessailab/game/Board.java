@@ -1,7 +1,5 @@
 package com.chessailab.game;
 
-import com.sun.tools.javac.comp.Check;
-
 public class Board {
 
     private Spot[][] board;

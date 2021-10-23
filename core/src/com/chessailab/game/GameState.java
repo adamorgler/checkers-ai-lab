@@ -1,7 +1,5 @@
 package com.chessailab.game;
 
-import com.sun.tools.javac.comp.Check;
-
 public class GameState {
 
     private Board board;
@@ -54,5 +52,8 @@ public class GameState {
 
     public boolean isRunning() {
         return running;
+    }
+    public void stop() {
+        this.running = false;
     }
 }
